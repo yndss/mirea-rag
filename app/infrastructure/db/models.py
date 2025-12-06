@@ -15,6 +15,6 @@ class QaPairORM(Base):
     answer: Mapped[str] = mapped_column(Text, nullable=False)
     source_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     topic: Mapped[str] = mapped_column(Text, nullable=False)
-    is_generated: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    is_generated: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     embedding: Mapped[list[float]] = mapped_column(Vector(1536), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())

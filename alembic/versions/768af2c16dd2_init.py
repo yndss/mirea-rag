@@ -30,7 +30,7 @@ def upgrade() -> None:
     sa.Column('answer', sa.Text(), nullable=False),
     sa.Column('source_url', sa.Text(), nullable=True),
     sa.Column('topic', sa.Text(), nullable=False),
-    sa.Column('is_generated', sa.Boolean(), nullable=False),
+    sa.Column('is_generated', sa.Boolean(), nullable=False, server_default=sa.text('true')),
     sa.Column('embedding', Vector(1536), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.PrimaryKeyConstraint('id')
