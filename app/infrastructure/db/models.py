@@ -1,7 +1,7 @@
 from typing import List
 from datetime import datetime
 
-from sqlalchemy import BigInteger, Text, Boolean, DateTime
+from sqlalchemy import BigInteger, Text, Boolean, DateTime, text
 from sqlalchemy.sql import func
 from sqlalchemy.orm import Mapped, mapped_column
 from pgvector.sqlalchemy import Vector
