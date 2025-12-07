@@ -1,6 +1,8 @@
 from app.infrastructure.db.base import SessionLocal
 from app.infrastructure.db.qa_pair_repository import SqlAlchemyQaPairRepository
-from app.infrastructure.llm.openrouter_embedding_provider import OpenRouterEmbeddingProvider
+from app.infrastructure.llm.openrouter_embedding_provider import (
+    OpenRouterEmbeddingProvider,
+)
 
 
 def main() -> None:
@@ -21,7 +23,7 @@ def main() -> None:
             print(f"   topic={qa.topic}, is_generated={qa.is_generated}")
             print(f"   answer={qa.answer[:120]}...")
             print()
-        
+
     finally:
         session.close()
 

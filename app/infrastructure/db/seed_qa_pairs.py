@@ -3,8 +3,11 @@ from pathlib import Path
 
 from app.infrastructure.db.base import SessionLocal
 from app.infrastructure.db.qa_pair_repository import SqlAlchemyQaPairRepository
-from app.infrastructure.llm.openrouter_embedding_provider import OpenRouterEmbeddingProvider
+from app.infrastructure.llm.openrouter_embedding_provider import (
+    OpenRouterEmbeddingProvider,
+)
 from app.domain.models.qa_pair import QaPair
+
 
 def parse_bool(value: str | None, default: bool = True) -> bool:
     if value is None:
@@ -16,11 +19,12 @@ def parse_bool(value: str | None, default: bool = True) -> bool:
         return False
     return default
 
+
 def seed_from_csv(csv_path: str) -> None:
     path = Path(csv_path)
     if not path.exists():
         raise FileNotFoundError(path)
-    
+
     session = SessionLocal()
     repo = SqlAlchemyQaPairRepository(session)
     embedder = OpenRouterEmbeddingProvider()
@@ -44,7 +48,7 @@ def seed_from_csv(csv_path: str) -> None:
                 topic=row["topic"],
                 is_generated=parse_bool(row.get("is_generated"), default=True),
                 embedding=emb,
-                created_at=None
+                created_at=None,
             )
             qa_objects.append(qa)
 
@@ -57,6 +61,7 @@ def seed_from_csv(csv_path: str) -> None:
         raise
     finally:
         session.close()
+
 
 if __name__ == "__main__":
     import argparse
