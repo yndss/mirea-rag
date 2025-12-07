@@ -1,0 +1,56 @@
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Пакеты / сборка
+build/
+dist/
+.eggs/
+*.egg-info/
+
+# Виртуальные окружения
+.venv/
+venv/
+env/
+ENV/
+
+# Кэш и временные файлы
+.mypy_cache/
+.pytest_cache/
+.pyre/
+.pytype/
+.ipynb_checkpoints/
+
+# Файлы покрытия и профилирования
+.coverage
+.coverage.*
+htmlcov/
+.prof
+*.prof
+
+# Логи
+*.log
+logs/
+tmp/
+
+# --- Конфиги и секреты ---
+.env
+.env.*
+!.env.example
+*.sqlite3
+
+
+# --- IDE / редакторы ---
+.vscode/
+.idea/
+*.iml
+
+# --- Docker / локальные данные ---
+docker-data/
+pgdata/
+*.pid
+
+# --- ОС ---
+.DS_Store
+Thumbs.db
