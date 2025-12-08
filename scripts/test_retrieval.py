@@ -11,13 +11,13 @@ def main() -> None:
     embedder = OpenRouterEmbeddingProvider()
 
     try:
-        user_question = "Какие документы нужны для поступления в мирэа?"
+        user_question = "Сколько стоит обучение на платном отделении и есть ли рассрочка/оплата по семестрам?"
 
         query_vec = embedder.embed(user_question)
         results = repo.find_top_k(query_vec, k=5)
 
         print(f"Запрос: {user_question}")
-        print("Топ-3 найденных вопроса:\n")
+        print("Топ-5 найденных вопроса:\n")
         for i, qa in enumerate(results, start=1):
             print(f"{i}. {qa.question}")
             print(f"   topic={qa.topic}, is_generated={qa.is_generated}")
