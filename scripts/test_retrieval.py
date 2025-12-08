@@ -1,5 +1,5 @@
 from app.infrastructure.db.base import SessionLocal
-from app.infrastructure.db.qa_pair_repository import SqlAlchemyQaPairRepository
+from app.infrastructure.db.crud import SqlAlchemyQaPairRepository
 from app.infrastructure.llm.openrouter_embedding_provider import (
     OpenRouterEmbeddingProvider,
 )
