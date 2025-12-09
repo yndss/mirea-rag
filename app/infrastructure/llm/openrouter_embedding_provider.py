@@ -1,5 +1,7 @@
 from typing import Sequence
+
 import requests
+from loguru import logger
 
 from app.infrastructure.config import OPENROUTER_API_KEY, EMBEDDING_MODEL_NAME
 
@@ -28,17 +30,28 @@ class OpenRouterEmbeddingProvider:
         if not texts:
             return []
 
-        response = requests.post(
+        logger.debug(
+            "Requesting embeddings via OpenRouter (model={}, count={}, endpoint={})",
+            self._model,
+            len(texts),
             self._base_url,
-            headers={"Authorization": f"Bearer {self._api_key}"},
-            json={
-                "model": self._model,
-                "input": list(texts),
-            },
-            timeout=self._timeout,
         )
-        response.raise_for_status()
-        data = response.json()
+        try:
+            response = requests.post(
+                self._base_url,
+                headers={"Authorization": f"Bearer {self._api_key}"},
+                json={
+                    "model": self._model,
+                    "input": list(texts),
+                },
+                timeout=self._timeout,
+            )
+            response.raise_for_status()
+            data = response.json()
 
-        embeddings: list[list[float]] = [item["embedding"] for item in data["data"]]
-        return embeddings
+            embeddings: list[list[float]] = [item["embedding"] for item in data["data"]]
+            logger.debug("Embeddings received (items={})", len(embeddings))
+            return embeddings
+        except Exception as exc:
+            logger.exception("Embedding request to OpenRouter failed: {}", exc)
+            raise

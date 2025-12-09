@@ -1,6 +1,8 @@
 from typing import Sequence
 from sqlalchemy.orm import Session
 
+from loguru import logger
+
 from app.domain.models.qa_pair import QaPair
 from app.domain.interfaces.qa_pair_repository import QaPairRepository
 from app.infrastructure.db.models import QaPairORM
@@ -38,6 +40,7 @@ class SqlAlchemyQaPairRepository(QaPairRepository):
 
         qa.id = orm_obj.id
         qa.created_at = orm_obj.created_at
+        logger.debug("Inserted QA pair (id={}, topic={})", qa.id, qa.topic)
         return qa
 
     def add_many(self, qa_list: Sequence[QaPair]) -> None:
@@ -56,9 +59,11 @@ class SqlAlchemyQaPairRepository(QaPairRepository):
             self._session.add(orm_obj)
 
         self._session.flush()
+        logger.info("Inserted batch of QA pairs (count={})", len(qa_list))
 
     def list_all(self) -> Sequence[QaPair]:
         rows: list[QaPairORM] = self._session.query(QaPairORM).all()
+        logger.debug("Fetched all QA pairs (count={})", len(rows))
         return [self._to_domain(row) for row in rows]
 
     def find_top_k(self, query_embedding: Sequence[float], k: int) -> Sequence[QaPair]:
@@ -68,4 +73,5 @@ class SqlAlchemyQaPairRepository(QaPairRepository):
             .limit(k)
             .all()
         )
+        logger.debug("Vector search returned {} items (k={})", len(rows), k)
         return [self._to_domain(row) for row in rows]

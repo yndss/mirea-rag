@@ -7,6 +7,7 @@ from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart
 from aiogram.types import Message
 from aiogram.client.default import DefaultBotProperties
+from loguru import logger
 
 from app.infrastructure.config import TELEGRAM_BOT_TOKEN
 from app.infrastructure.db.base import SessionLocal
@@ -16,6 +17,7 @@ from app.infrastructure.llm.openrouter_embedding_provider import (
 )
 from app.infrastructure.llm.openrouter_llm_client import OpenRouterLlmClient
 from app.application.rag_service import RagService
+from app.infrastructure.logging import setup_logging
 
 
 router = Router()
@@ -24,6 +26,7 @@ router = Router()
 @asynccontextmanager
 async def rag_service_context() -> AsyncIterator[RagService]:
     session = SessionLocal()
+    logger.debug("Opened database session for Telegram request")
     try:
         qa_repo = SqlAlchemyQaPairRepository(session)
         embedding_provider = OpenRouterEmbeddingProvider()
@@ -36,11 +39,17 @@ async def rag_service_context() -> AsyncIterator[RagService]:
         )
         yield rag_service
         session.commit()
-    except Exception:
+        logger.debug("Session commit completed")
+    except Exception as exc:
+        logger.exception(
+            "Error during RAG pipeline execution, rolling back session: {}",
+            exc,
+        )
         session.rollback()
         raise
     finally:
         session.close()
+        logger.debug("Database session closed")
 
 
 @router.message(CommandStart())
@@ -64,6 +73,12 @@ async def handle_question(message: Message) -> None:
     if not question:
         await message.answer("Пожалуйста, напиши текстовый вопрос.")
 
+    logger.info(
+        "Received question from user (chat_id={}, user_id={}, length={})",
+        message.chat.id,
+        message.from_user.id if message.from_user else None,
+        len(question),
+    )
     await message.chat.do("typing")
 
     try:
@@ -74,13 +89,22 @@ async def handle_question(message: Message) -> None:
         await message.answer(
             "Произошла ошибка при обработке вопроса. " "Попробуй ещё раз позже."
         )
-        print(f"Error while answering question: {e}")
+        logger.exception("Failed to process question: {}", e)
         return
 
+    logger.info(
+        "Sending answer to user (chat_id={}, user_id={}, answer_len={})",
+        message.chat.id,
+        message.from_user.id if message.from_user else None,
+        len(answer),
+    )
     await message.answer(answer)
 
 
 async def main() -> None:
+    setup_logging()
+    logger.info("Logging configured for Telegram bot")
+
     if not TELEGRAM_BOT_TOKEN:
         raise RuntimeError("TELEGRAM_BOT_TOKEN is not set in environment")
 
@@ -93,7 +117,7 @@ async def main() -> None:
 
     await bot.delete_webhook(drop_pending_updates=True)
 
-    print("Telegram bot is starting polling...")
+    logger.info("Telegram bot is starting polling")
     await dp.start_polling(bot)
 
 

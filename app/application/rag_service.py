@@ -4,6 +4,7 @@ from app.domain.interfaces.qa_pair_repository import QaPairRepository
 from app.domain.interfaces.embedding_provider import EmbeddingProvider
 from app.domain.interfaces.llm_client import LlmClient
 from app.domain.models.qa_pair import QaPair
+from loguru import logger
 
 
 class RagService:
@@ -24,7 +25,7 @@ class RagService:
     def _build_context(self, qa_pairs: Sequence[QaPair]) -> str:
         parts: list[str] = []
         for idx, qa in enumerate(qa_pairs, start=1):
-            part = f"[Q{idx}] Вопрос: {qa.question}\n" f"[A(idx)] Ответ: {qa.answer}\n"
+            part = f"[Q{idx}] Вопрос: {qa.question}\n" f"[A{idx}] Ответ: {qa.answer}\n"
             parts.append(part)
         return "\n".join(parts)
 
@@ -43,11 +44,24 @@ class RagService:
         return prompt
 
     def answer(self, question: str) -> str:
+        logger.info(
+            "RAG pipeline started (question_len={}, top_k={})",
+            len(question),
+            self._top_k,
+        )
         query_vec = self._embeddings.embed(question)
+        logger.debug("Embedding generated (dimension={})", len(query_vec))
 
         context_qas = self._qa_repo.find_top_k(query_vec, k=self._top_k)
+        logger.debug("Top-k retrieval completed (items={})", len(context_qas))
 
         prompt = self._build_prompt(question, context_qas)
 
         answer = self._llm.generate(prompt)
+        logger.info(
+            "RAG answer produced (question_len={}, context_pairs={}, answer_len={})",
+            len(question),
+            len(context_qas),
+            len(answer),
+        )
         return answer

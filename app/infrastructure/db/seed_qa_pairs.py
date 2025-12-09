@@ -1,12 +1,15 @@
 import csv
 from pathlib import Path
 
+from loguru import logger
+
+from app.domain.models.qa_pair import QaPair
 from app.infrastructure.db.base import SessionLocal
 from app.infrastructure.db.crud import SqlAlchemyQaPairRepository
 from app.infrastructure.llm.openrouter_embedding_provider import (
     OpenRouterEmbeddingProvider,
 )
-from app.domain.models.qa_pair import QaPair
+from app.infrastructure.logging import setup_logging
 
 
 def parse_bool(value: str | None, default: bool = True) -> bool:
@@ -35,6 +38,9 @@ def seed_from_csv(csv_path: str) -> None:
             rows = list(reader)
 
         questions = [row["question"] for row in rows]
+        logger.info(
+            "Embedding questions from CSV (count={}, path={})", len(questions), path
+        )
         embeddings = embedder.embed_many(questions)
 
         qa_objects: list[QaPair] = []
@@ -54,10 +60,11 @@ def seed_from_csv(csv_path: str) -> None:
 
         repo.add_many(qa_objects)
         session.commit()
-        print(f"Inserted {len(qa_objects)} QA pairs")
+        logger.info("Inserted QA pairs into database (count={})", len(qa_objects))
 
-    except Exception:
+    except Exception as exc:
         session.rollback()
+        logger.exception("Failed to seed QA pairs from CSV: {}", exc)
         raise
     finally:
         session.close()
@@ -65,6 +72,8 @@ def seed_from_csv(csv_path: str) -> None:
 
 if __name__ == "__main__":
     import argparse
+
+    setup_logging()
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--csv", required=True, help="Path to qa_pairs CSV file")
