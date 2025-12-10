@@ -49,15 +49,35 @@ class RagService:
             len(question),
             self._top_k,
         )
-        query_vec = self._embeddings.embed(question)
+        query_vec = self._embeddings.embed(question) # 1
         logger.debug("Embedding generated (dimension={})", len(query_vec))
 
-        context_qas = self._qa_repo.find_top_k(query_vec, k=self._top_k)
+        context_qas = self._qa_repo.find_top_k(query_vec, k=self._top_k) # 2
         logger.debug("Top-k retrieval completed (items={})", len(context_qas))
 
-        prompt = self._build_prompt(question, context_qas)
+        prompt = self._build_prompt(question, context_qas) # 3
 
-        answer = self._llm.generate(prompt)
+        answer = self._llm.generate(prompt) # 4
+        # lang + chain
+        # _embeddings.embed | _qa_repo.find_top_k(query_vec, k=self._top_k) | _build_prompt(question, context_qas) | _llm.generate(prompt)
+        # RunnableAlpha(...)
+        # - llm.ainvoke(prompt) -> answer:
+        '''
+        llm = ChatOpenAI(
+                model="gpt-4o-mini",
+                temperature=0.0,
+              )
+        rag_chain = (
+            {
+                "context": retriever | format_docs,
+                "question": RunnablePassthrough(),
+            }
+            | prompt
+            | llm
+        )
+        '''
+        
+        
         logger.info(
             "RAG answer produced (question_len={}, context_pairs={}, answer_len={})",
             len(question),
