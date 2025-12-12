@@ -1,31 +1,30 @@
 from typing import Sequence
+import math
 
 from loguru import logger
 from openai import AsyncOpenAI
 
-from app.infrastructure.config import OPENROUTER_API_KEY, EMBEDDING_MODEL_NAME
+from app.infrastructure.config import (
+    EMBEDDING_BASE_URL,
+    EMBEDDING_MODEL_NAME,
+    EMBEDDING_TIMEOUT,
+    OPENROUTER_API_KEY,
+)
 
 
 class OpenRouterEmbeddingProvider:
 
-    def __init__(
-        self,
-        timeout: float = 30.0,
-        base_url: str = "https://openrouter.ai/api/v1",
-        extra_headers: dict[str, str] | None = None,
-    ) -> None:
+    def __init__(self) -> None:
         if not OPENROUTER_API_KEY:
             raise RuntimeError("OPENROUTER_API_KEY is not set")
         if not EMBEDDING_MODEL_NAME:
             raise RuntimeError("EMBEDDING_MODEL_NAME is not set")
 
         self._model = EMBEDDING_MODEL_NAME
-        self._extra_headers = extra_headers
         self._client = AsyncOpenAI(
-            base_url=base_url,
+            base_url=EMBEDDING_BASE_URL,
             api_key=OPENROUTER_API_KEY,
-            default_headers=extra_headers,
-            timeout=timeout,
+            timeout=EMBEDDING_TIMEOUT,
         )
 
     async def embed(self, text: str) -> Sequence[float]:
@@ -47,9 +46,18 @@ class OpenRouterEmbeddingProvider:
                 input=list(texts),
                 encoding_format="float",
             )
-            embeddings: list[list[float]] = [item.embedding for item in response.data]
+            embeddings: list[list[float]] = [
+                self._l2_normalize(item.embedding) for item in response.data
+            ]
             logger.debug("Embeddings received (items={})", len(embeddings))
             return embeddings
         except Exception as exc:
             logger.exception("Embedding request to OpenRouter failed: {}", exc)
             raise
+
+    @staticmethod
+    def _l2_normalize(vec: Sequence[float]) -> list[float]:
+        norm = math.sqrt(sum(x * x for x in vec))
+        if norm == 0:
+            return list(vec)
+        return [x / norm for x in vec]

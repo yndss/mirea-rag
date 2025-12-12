@@ -74,7 +74,7 @@ class SqlAlchemyQaPairRepository(QaPairRepository):
     ) -> Sequence[QaPair]:
         stmt = (
             select(QaPairORM)
-            .order_by(QaPairORM.embedding.l2_distance(list(query_embedding)))
+            .order_by(QaPairORM.embedding.cosine_distance(list(query_embedding)))
             .limit(k)
         )
         result = await self._session.scalars(stmt)

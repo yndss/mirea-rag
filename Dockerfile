@@ -14,4 +14,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-CMD ["/bin/sh", "-c", "alembic upgrade head && python -m app.presentation.bot.telegram_bot"]
+CMD ["/bin/sh", "-c", "alembic upgrade head && python -m app.presentation.bot.client"]

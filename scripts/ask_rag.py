@@ -19,7 +19,6 @@ async def main() -> None:
             qa_repo=qa_repo,
             embedding_provider=embedding_provider,
             llm_client=llm_client,
-            top_k=5,
         )
 
         print("RAG-консоль. Введи вопрос абитуриента. Пустая строка — выход.\n")

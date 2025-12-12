@@ -1,19 +1,20 @@
 from loguru import logger
 from openai import AsyncOpenAI
 
-from app.infrastructure.config import OPENROUTER_API_KEY, OPENROUTER_MODEL_NAME
+from app.infrastructure.config import (
+    OPENROUTER_API_KEY,
+    OPENROUTER_BASE_URL,
+    OPENROUTER_MODEL_NAME,
+    OPENROUTER_TEMPERATURE,
+    OPENROUTER_TIMEOUT,
+    SYSTEM_PROMPT_NAME,
+)
 from app.prompts import load_prompt
 
 
 class OpenRouterLlmClient:
 
-    def __init__(
-        self,
-        timeout: float = 60.0,
-        base_url: str = "https://openrouter.ai/api/v1",
-        system_prompt_name: str = "system_prompt.md",
-        extra_headers: dict[str, str] | None = None,
-    ) -> None:
+    def __init__(self, system_prompt_name: str = SYSTEM_PROMPT_NAME) -> None:
         if not OPENROUTER_API_KEY:
             raise RuntimeError("OPENROUTER_API_KEY is not set")
         if not OPENROUTER_MODEL_NAME:
@@ -22,10 +23,9 @@ class OpenRouterLlmClient:
         self._model = OPENROUTER_MODEL_NAME
         self._system_prompt = load_prompt(system_prompt_name)
         self._client = AsyncOpenAI(
-            base_url=base_url,
+            base_url=OPENROUTER_BASE_URL,
             api_key=OPENROUTER_API_KEY,
-            default_headers=extra_headers,
-            timeout=timeout,
+            timeout=OPENROUTER_TIMEOUT,
         )
 
     async def generate(self, prompt: str) -> str:
@@ -40,7 +40,7 @@ class OpenRouterLlmClient:
                     {"role": "system", "content": self._system_prompt},
                     {"role": "user", "content": prompt},
                 ],
-                temperature=0.1,
+                temperature=OPENROUTER_TEMPERATURE,
             )
             answer = response.choices[0].message.content or ""
             logger.debug(
