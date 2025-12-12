@@ -4,6 +4,7 @@ from app.domain.interfaces.qa_pair_repository import QaPairRepository
 from app.domain.interfaces.embedding_provider import EmbeddingProvider
 from app.domain.interfaces.llm_client import LlmClient
 from app.domain.models.qa_pair import QaPair
+from app.prompts import load_prompt
 from loguru import logger
 
 
@@ -21,43 +22,45 @@ class RagService:
         self._embeddings = embedding_provider
         self._llm = llm_client
         self._top_k = top_k
+        self._qa_prompt_template = load_prompt("qa_prompt.md")
 
     def _build_context(self, qa_pairs: Sequence[QaPair]) -> str:
         parts: list[str] = []
         for idx, qa in enumerate(qa_pairs, start=1):
-            part = f"[Q{idx}] Вопрос: {qa.question}\n" f"[A{idx}] Ответ: {qa.answer}\n"
+            part = (
+                f"- Q{idx}: {qa.question}\n"
+                f"  A{idx}: {qa.answer}"
+            )
             parts.append(part)
-        return "\n".join(parts)
+        return "\n\n".join(parts)
 
     def _build_prompt(self, question: str, context_qas: Sequence[QaPair]) -> str:
         context_text = self._build_context(context_qas)
 
-        prompt = (
-            "Ниже дан контекст (вопросы и ответы для абитуриентов МИРЭА).\n"
-            "Используй его, чтобы ответить на вопрос пользователя.\n"
-            "Если точного ответа в контексте нет, скажи, что ответить "
-            "нельзя, так как ты не обладаешь такой информацией.\n\n"
-            f"КОНТЕКСТ:\n{context_text}\n\n"
-            f"ВОПРОС ПОЛЬЗОВАТЕЛЯ:\n{question}\n\n"
-            "ОТВЕТ:"
+        return (
+            self._qa_prompt_template
+            .replace("{{context}}", context_text)
+            .replace("{{user_question}}", question)
         )
-        return prompt
 
-    def answer(self, question: str) -> str:
+    async def answer(self, question: str) -> str:
         logger.info(
             "RAG pipeline started (question_len={}, top_k={})",
             len(question),
             self._top_k,
         )
-        query_vec = self._embeddings.embed(question) # 1
+        query_vec = await self._embeddings.embed(question) # 1
         logger.debug("Embedding generated (dimension={})", len(query_vec))
 
-        context_qas = self._qa_repo.find_top_k(query_vec, k=self._top_k) # 2
+        context_qas = await self._qa_repo.find_top_k(
+            query_vec,
+            self._top_k,
+        ) # 2
         logger.debug("Top-k retrieval completed (items={})", len(context_qas))
 
         prompt = self._build_prompt(question, context_qas) # 3
 
-        answer = self._llm.generate(prompt) # 4
+        answer = await self._llm.generate(prompt) # 4
         # lang + chain
         # _embeddings.embed | _qa_repo.find_top_k(query_vec, k=self._top_k) | _build_prompt(question, context_qas) | _llm.generate(prompt)
         # RunnableAlpha(...)

@@ -8,7 +8,7 @@ DB_PORT = os.getenv("DB_PORT", "5432")
 DB_NAME = os.getenv("DB_NAME", "mirea_rag")
 DB_USER = os.getenv("DB_USER", "mirea_user")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_DRIVER = os.getenv("DB_DRIVER", "postgresql+psycopg2")
+DB_DRIVER = os.getenv("DB_DRIVER", "postgresql+asyncpg")
 
 
 def build_db_url() -> str:

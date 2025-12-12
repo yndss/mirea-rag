@@ -1,3 +1,5 @@
+import asyncio
+
 from app.infrastructure.db.base import SessionLocal
 from app.infrastructure.db.crud import SqlAlchemyQaPairRepository
 from app.infrastructure.llm.openrouter_embedding_provider import (
@@ -7,9 +9,8 @@ from app.infrastructure.llm.openrouter_llm_client import OpenRouterLlmClient
 from app.application.rag_service import RagService
 
 
-def main() -> None:
-    session = SessionLocal()
-    try:
+async def main() -> None:
+    async with SessionLocal() as session:
         qa_repo = SqlAlchemyQaPairRepository(session)
         embedding_provider = OpenRouterEmbeddingProvider()
         llm_client = OpenRouterLlmClient()
@@ -36,7 +37,7 @@ def main() -> None:
 
             print("\nДумаю...\n")
             try:
-                answer = rag_service.answer(question)
+                answer = await rag_service.answer(question)
             except Exception as e:
                 print(f"Ошибка при обработке вопроса: {e}")
                 continue
@@ -44,9 +45,7 @@ def main() -> None:
             print("Ответ:")
             print(answer)
             print("\n" + "-" * 60 + "\n")
-    finally:
-        session.close()
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

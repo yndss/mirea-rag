@@ -25,31 +25,30 @@ router = Router()
 
 @asynccontextmanager
 async def rag_service_context() -> AsyncIterator[RagService]:
-    session = SessionLocal()
-    logger.debug("Opened database session for Telegram request")
-    try:
-        qa_repo = SqlAlchemyQaPairRepository(session)
-        embedding_provider = OpenRouterEmbeddingProvider()
-        llm_client = OpenRouterLlmClient()
-        rag_service = RagService(
-            qa_repo=qa_repo,
-            embedding_provider=embedding_provider,
-            llm_client=llm_client,
-            top_k=5,
-        )
-        yield rag_service
-        session.commit()
-        logger.debug("Session commit completed")
-    except Exception as exc:
-        logger.exception(
-            "Error during RAG pipeline execution, rolling back session: {}",
-            exc,
-        )
-        session.rollback()
-        raise
-    finally:
-        session.close()
-        logger.debug("Database session closed")
+    async with SessionLocal() as session:
+        logger.debug("Opened database session for Telegram request")
+        try:
+            qa_repo = SqlAlchemyQaPairRepository(session)
+            embedding_provider = OpenRouterEmbeddingProvider()
+            llm_client = OpenRouterLlmClient()
+            rag_service = RagService(
+                qa_repo=qa_repo,
+                embedding_provider=embedding_provider,
+                llm_client=llm_client,
+                top_k=5,
+            )
+            yield rag_service
+            await session.commit()
+            logger.debug("Session commit completed")
+        except Exception as exc:
+            logger.exception(
+                "Error during RAG pipeline execution, rolling back session: {}",
+                exc,
+            )
+            await session.rollback()
+            raise
+        finally:
+            logger.debug("Database session closed")
 
 
 @router.message(CommandStart())
@@ -83,7 +82,7 @@ async def handle_question(message: Message) -> None:
 
     try:
         async with rag_service_context() as rag_service:
-            answer = await asyncio.to_thread(rag_service.answer, question)
+            answer = await rag_service.answer(question)
 
     except Exception as e:
         await message.answer(
