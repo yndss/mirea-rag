@@ -13,4 +13,5 @@ class QaPairRepository(Protocol):
         self,
         query_embedding: Sequence[float],
         k: int,
+        max_distance: float,
     ) -> Sequence[QaPair]: ...

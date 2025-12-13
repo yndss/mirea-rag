@@ -70,14 +70,32 @@ class SqlAlchemyQaPairRepository(QaPairRepository):
         return [self._to_domain(row) for row in rows]
 
     async def find_top_k(
-        self, query_embedding: Sequence[float], k: int
+        self,
+        query_embedding: Sequence[float],
+        k: int,
+        max_distance: float = 0.0,
     ) -> Sequence[QaPair]:
+        distance_expr = QaPairORM.embedding.cosine_distance(list(query_embedding))
         stmt = (
-            select(QaPairORM)
-            .order_by(QaPairORM.embedding.cosine_distance(list(query_embedding)))
+            select(QaPairORM, distance_expr.label("distance"))
+            .where(distance_expr < max_distance)
+            .order_by(distance_expr)
             .limit(k)
         )
-        result = await self._session.scalars(stmt)
+
+        result = await self._session.execute(stmt)
         rows = result.all()
-        logger.debug("Vector search returned {} items (k={})", len(rows), k)
-        return [self._to_domain(row) for row in rows]
+        logger.info(
+            "Vector search returned {} items (k={}), items={}",
+            len(rows),
+            k,
+            [
+                {
+                    "distance": round(row.distance, 4),
+                    "question": row.QaPairORM.question,
+                    "answer": row.QaPairORM.answer,
+                }
+                for row in rows
+            ],
+        )
+        return [self._to_domain(row.QaPairORM) for row in rows]

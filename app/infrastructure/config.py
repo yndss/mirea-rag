@@ -30,6 +30,7 @@ EMBEDDING_TIMEOUT = float(os.getenv("EMBEDDING_TIMEOUT", "30.0"))
 
 RAG_TOP_K = int(os.getenv("RAG_TOP_K", "5"))
 RAG_QA_PROMPT_NAME = os.getenv("RAG_QA_PROMPT_NAME", "qa_prompt.md")
+RAG_MAX_DISTANCE = float(os.getenv("RAG_MAX_DISTANCE", "0.3"))
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_WELCOME_PROMPT = os.getenv("TELEGRAM_WELCOME_PROMPT", "telegram_welcome.md")
