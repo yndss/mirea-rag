@@ -87,16 +87,20 @@ class SqlAlchemyQaPairRepository(QaPairRepository):
         result = await self._session.execute(stmt)
         rows = result.all()
         logger.info(
-            "Vector search returned {} items (k={}), items={}",
+            "Vector search returned {} items (k={}, min_similarity={}):\n{}",
             len(rows),
             k,
-            [
-                {
-                    "similarity": round(row.similarity, 4),
-                    "question": row.QaPairORM.question,
-                    "answer": row.QaPairORM.answer,
-                }
-                for row in rows
-            ],
+            round(min_similarity, 4),
+            "\n".join(
+                [
+                    (
+                        f"- id={row.QaPairORM.id}, "
+                        f"similarity={round(row.similarity, 4)}, "
+                        f"question={row.QaPairORM.question}, "
+                        f"answer={row.QaPairORM.answer}"
+                    )
+                    for row in rows
+                ]
+            ),
         )
         return [self._to_domain(row.QaPairORM) for row in rows]

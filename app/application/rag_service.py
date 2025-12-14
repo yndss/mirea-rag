@@ -49,9 +49,11 @@ class RagService:
 
     async def answer(self, question: str) -> str:
         logger.info(
-            "RAG pipeline started (question_len={}, top_k={})",
+            "RAG pipeline started (question_len={}, top_k={}, min_similarity={}, question={})",
             len(question),
             self._top_k,
+            self._min_similarity,
+            question,
         )
         query_vec = await self._embeddings.embed(question)  # 1
         logger.debug("Embedding generated (dimension={})", len(query_vec))
@@ -64,6 +66,7 @@ class RagService:
         logger.debug("Top-k retrieval completed (items={})", len(context_qas))
 
         prompt = self._build_prompt(question, context_qas)  # 3
+        logger.info("RAG final prompt:\n{}", prompt)
 
         answer = await self._llm.generate(prompt)  # 4
         logger.info("RAG full answer:\n{}", answer)
