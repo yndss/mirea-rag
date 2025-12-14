@@ -1,3 +1,6 @@
+import asyncio
+
+from app.infrastructure.config import RAG_MIN_SIMILARITY, RAG_TOP_K
 from app.infrastructure.db.base import SessionLocal
 from app.infrastructure.db.crud import SqlAlchemyQaPairRepository
 from app.infrastructure.llm.openrouter_embedding_provider import (
@@ -5,16 +8,19 @@ from app.infrastructure.llm.openrouter_embedding_provider import (
 )
 
 
-def main() -> None:
-    session = SessionLocal()
-    repo = SqlAlchemyQaPairRepository(session)
-    embedder = OpenRouterEmbeddingProvider()
+async def main() -> None:
+    async with SessionLocal() as session:
+        repo = SqlAlchemyQaPairRepository(session)
+        embedder = OpenRouterEmbeddingProvider()
 
-    try:
         user_question = "Сколько стоит обучение на платном отделении и есть ли рассрочка/оплата по семестрам?"
 
-        query_vec = embedder.embed(user_question)
-        results = repo.find_top_k(query_vec, k=5)
+        query_vec = await embedder.embed(user_question)
+        results = await repo.find_top_k(
+            query_vec,
+            k=RAG_TOP_K,
+            min_similarity=RAG_MIN_SIMILARITY,
+        )
 
         print(f"Запрос: {user_question}")
         print("Топ-5 найденных вопроса:\n")
@@ -24,9 +30,6 @@ def main() -> None:
             print(f"   answer={qa.answer[:120]}...")
             print()
 
-    finally:
-        session.close()
-
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

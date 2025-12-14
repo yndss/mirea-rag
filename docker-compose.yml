@@ -12,6 +12,18 @@ services:
       - ${DB_PORT}:5432
     volumes:
       - mirea_rag_pgdata:/var/lib/postgresql/data
+
+  app:
+    build: .
+    container_name: mirea_rag_app
+    env_file:
+      - .env 
+    environment:
+      DB_HOST: db 
+      DB_PORT: 5432
+    depends_on:
+      - db 
+    restart: unless-stopped
     
 volumes:
   mirea_rag_pgdata:

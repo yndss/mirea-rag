@@ -1,15 +1,18 @@
 from typing import Sequence
-from sqlalchemy.orm import Session
 
-from app.domain.models.qa_pair import QaPair
+from loguru import logger
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.domain.interfaces.qa_pair_repository import QaPairRepository
+from app.domain.models.qa_pair import QaPair
 from app.infrastructure.db.models import QaPairORM
 
 
 class SqlAlchemyQaPairRepository(QaPairRepository):
 
-    def __init__(self, session: Session) -> None:
-        self._session = session
+    def __init__(self, session: AsyncSession) -> None:
+        self._session: AsyncSession = session
 
     @staticmethod
     def _to_domain(row: QaPairORM) -> QaPair:
@@ -24,7 +27,7 @@ class SqlAlchemyQaPairRepository(QaPairRepository):
             created_at=row.created_at,
         )
 
-    def add(self, qa: QaPair) -> QaPair:
+    async def add(self, qa: QaPair) -> QaPair:
         orm_obj = QaPairORM(
             question=qa.question,
             answer=qa.answer,
@@ -34,13 +37,15 @@ class SqlAlchemyQaPairRepository(QaPairRepository):
             embedding=list(qa.embedding),
         )
         self._session.add(orm_obj)
-        self._session.flush()
+        await self._session.flush()
+        await self._session.refresh(orm_obj)
 
         qa.id = orm_obj.id
         qa.created_at = orm_obj.created_at
+        logger.debug("Inserted QA pair (id={}, topic={})", qa.id, qa.topic)
         return qa
 
-    def add_many(self, qa_list: Sequence[QaPair]) -> None:
+    async def add_many(self, qa_list: Sequence[QaPair]) -> None:
         if not qa_list:
             return
 
@@ -55,17 +60,47 @@ class SqlAlchemyQaPairRepository(QaPairRepository):
             )
             self._session.add(orm_obj)
 
-        self._session.flush()
+        await self._session.flush()
+        logger.info("Inserted batch of QA pairs (count={})", len(qa_list))
 
-    def list_all(self) -> Sequence[QaPair]:
-        rows: list[QaPairORM] = self._session.query(QaPairORM).all()
+    async def list_all(self) -> Sequence[QaPair]:
+        result = await self._session.scalars(select(QaPairORM))
+        rows = result.all()
+        logger.debug("Fetched all QA pairs (count={})", len(rows))
         return [self._to_domain(row) for row in rows]
 
-    def find_top_k(self, query_embedding: Sequence[float], k: int) -> Sequence[QaPair]:
-        rows: list[QaPairORM] = (
-            self._session.query(QaPairORM)
-            .order_by(QaPairORM.embedding.l2_distance(list(query_embedding)))
+    async def find_top_k(
+        self,
+        query_embedding: Sequence[float],
+        k: int,
+        min_similarity: float = 0.0,
+    ) -> Sequence[QaPair]:
+        distance_expr = QaPairORM.embedding.cosine_distance(list(query_embedding))
+        similarity_expr = 1 - distance_expr
+        stmt = (
+            select(QaPairORM, similarity_expr.label("similarity"))
+            .where(similarity_expr >= min_similarity)
+            .order_by(similarity_expr.desc())
             .limit(k)
-            .all()
         )
-        return [self._to_domain(row) for row in rows]
+
+        result = await self._session.execute(stmt)
+        rows = result.all()
+        logger.info(
+            "Vector search returned {} items (k={}, min_similarity={}):\n{}",
+            len(rows),
+            k,
+            round(min_similarity, 4),
+            "\n".join(
+                [
+                    (
+                        f"- id={row.QaPairORM.id}, "
+                        f"similarity={round(row.similarity, 4)}, "
+                        f"question={row.QaPairORM.question}, "
+                        f"answer={row.QaPairORM.answer}"
+                    )
+                    for row in rows
+                ]
+            ),
+        )
+        return [self._to_domain(row.QaPairORM) for row in rows]
