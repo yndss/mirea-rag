@@ -73,13 +73,14 @@ class SqlAlchemyQaPairRepository(QaPairRepository):
         self,
         query_embedding: Sequence[float],
         k: int,
-        max_distance: float = 0.0,
+        min_similarity: float = 0.0,
     ) -> Sequence[QaPair]:
         distance_expr = QaPairORM.embedding.cosine_distance(list(query_embedding))
+        similarity_expr = 1 - distance_expr
         stmt = (
-            select(QaPairORM, distance_expr.label("distance"))
-            .where(distance_expr < max_distance)
-            .order_by(distance_expr)
+            select(QaPairORM, similarity_expr.label("similarity"))
+            .where(similarity_expr >= min_similarity)
+            .order_by(similarity_expr.desc())
             .limit(k)
         )
 
@@ -91,7 +92,7 @@ class SqlAlchemyQaPairRepository(QaPairRepository):
             k,
             [
                 {
-                    "distance": round(row.distance, 4),
+                    "similarity": round(row.similarity, 4),
                     "question": row.QaPairORM.question,
                     "answer": row.QaPairORM.answer,
                 }

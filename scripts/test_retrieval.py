@@ -1,6 +1,6 @@
 import asyncio
 
-from app.infrastructure.config import RAG_MAX_DISTANCE, RAG_TOP_K
+from app.infrastructure.config import RAG_MIN_SIMILARITY, RAG_TOP_K
 from app.infrastructure.db.base import SessionLocal
 from app.infrastructure.db.crud import SqlAlchemyQaPairRepository
 from app.infrastructure.llm.openrouter_embedding_provider import (
@@ -19,7 +19,7 @@ async def main() -> None:
         results = await repo.find_top_k(
             query_vec,
             k=RAG_TOP_K,
-            max_distance=RAG_MAX_DISTANCE,
+            min_similarity=RAG_MIN_SIMILARITY,
         )
 
         print(f"Запрос: {user_question}")
