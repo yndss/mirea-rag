@@ -20,7 +20,9 @@ _shared_embedding_provider: OpenRouterEmbeddingProvider | None = None
 _shared_llm_client: OpenRouterLlmClient | None = None
 
 
-async def _get_shared_clients() -> tuple[OpenRouterEmbeddingProvider, OpenRouterLlmClient]:
+async def _get_shared_clients() -> (
+    tuple[OpenRouterEmbeddingProvider, OpenRouterLlmClient]
+):
     global _shared_embedding_provider, _shared_llm_client
 
     if _shared_embedding_provider is not None and _shared_llm_client is not None:
@@ -42,7 +44,10 @@ async def close_shared_clients(**_: object) -> None:
     global _shared_embedding_provider, _shared_llm_client
 
     async with _shared_clients_lock:
-        embedding_provider, _shared_embedding_provider = _shared_embedding_provider, None
+        embedding_provider, _shared_embedding_provider = (
+            _shared_embedding_provider,
+            None,
+        )
         llm_client, _shared_llm_client = _shared_llm_client, None
 
     if embedding_provider is not None:

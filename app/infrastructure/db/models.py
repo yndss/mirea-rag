@@ -1,7 +1,18 @@
 from datetime import datetime
 import uuid
 
-from sqlalchemy import BigInteger, Text, Boolean, DateTime, Numeric, Float, String, JSON, ForeignKey, text, Integer
+from sqlalchemy import (
+    BigInteger,
+    Text,
+    Boolean,
+    DateTime,
+    Numeric,
+    Float,
+    String,
+    ForeignKey,
+    text,
+    Integer,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.sql import func
@@ -50,7 +61,9 @@ class RagRunORM(Base):
     extra_params: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     answer_text: Mapped[str] = mapped_column(Text, nullable=False)
     usage_prompt_tokens: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
-    usage_completion_tokens: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    usage_completion_tokens: Mapped[int | None] = mapped_column(
+        BigInteger, nullable=True
+    )
     usage_total_tokens: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     cost_usd: Mapped[float | None] = mapped_column(Numeric(20, 10), nullable=True)
     latency_ms_total: Mapped[int | None] = mapped_column(BigInteger, nullable=True)

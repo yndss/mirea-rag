@@ -17,6 +17,7 @@ from app.infrastructure.config import (
     SYSTEM_PROMPT_NAME,
 )
 from app.prompts import load_prompt
+from app.pricing import estimate_llm_cost_usd
 from loguru import logger
 
 
@@ -99,6 +100,14 @@ class RagService:
         t_llm_end = time.perf_counter()
 
         answer = generation.text
+        model_name = generation.model or (OPENROUTER_MODEL_NAME or "")
+        cost_usd = estimate_llm_cost_usd(
+            model_name=model_name,
+            prompt_tokens=generation.usage.prompt_tokens if generation.usage else None,
+            completion_tokens=(
+                generation.usage.completion_tokens if generation.usage else None
+            ),
+        )
         logger.info("RAG full answer:\n{}", answer)
 
         t_total_end = time.perf_counter()
@@ -114,7 +123,7 @@ class RagService:
                 distance_metric="cosine",
                 context_text=context_text,
                 final_prompt_text=prompt,
-                model_name=generation.model or (OPENROUTER_MODEL_NAME or ""),
+                model_name=model_name,
                 temperature=OPENROUTER_TEMPERATURE,
                 extra_params={
                     "system_prompt_name": SYSTEM_PROMPT_NAME,
@@ -131,7 +140,7 @@ class RagService:
                 usage_total_tokens=(
                     generation.usage.total_tokens if generation.usage else None
                 ),
-                cost_usd=None,
+                cost_usd=cost_usd,
                 latency_ms_total=int((t_total_end - t_total_start) * 1000),
                 latency_ms_retrieval=int((t_retrieval_end - t_retrieval_start) * 1000),
                 latency_ms_llm=int((t_llm_end - t_llm_start) * 1000),
