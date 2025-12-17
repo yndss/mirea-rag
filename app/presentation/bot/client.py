@@ -8,6 +8,7 @@ from loguru import logger
 from app.infrastructure.config import TELEGRAM_BOT_TOKEN
 from app.infrastructure.logging import setup_logging
 from .handlers import router
+from .services import close_shared_clients, init_shared_clients
 
 
 def _create_bot() -> Bot:
@@ -27,6 +28,8 @@ async def main() -> None:
     bot = _create_bot()
     dp = Dispatcher()
     dp.include_router(router)
+    dp.startup.register(init_shared_clients)
+    dp.shutdown.register(close_shared_clients)
 
     await bot.delete_webhook(drop_pending_updates=True)
 

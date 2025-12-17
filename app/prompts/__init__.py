@@ -1,8 +1,10 @@
 from pathlib import Path
+from functools import lru_cache
 
 _PROMPTS_DIR = Path(__file__).resolve().parent
 
 
+@lru_cache(maxsize=64)
 def load_prompt(name: str) -> str:
     """
     Read a prompt template from the prompts directory.

@@ -1,6 +1,7 @@
 from loguru import logger
 from openai import AsyncOpenAI
 
+from app.domain.models.llm_generation import LlmGeneration, LlmUsage
 from app.infrastructure.config import (
     OPENROUTER_API_KEY,
     OPENROUTER_BASE_URL,
@@ -28,7 +29,7 @@ class OpenRouterLlmClient:
             timeout=OPENROUTER_TIMEOUT,
         )
 
-    async def generate(self, prompt: str) -> str:
+    async def generate(self, prompt: str) -> LlmGeneration:
         logger.info(
             "Sending prompt to OpenRouter (model={})",
             self._model,
@@ -43,12 +44,28 @@ class OpenRouterLlmClient:
                 temperature=OPENROUTER_TEMPERATURE,
             )
             answer = response.choices[0].message.content or ""
+            usage = (
+                LlmUsage(
+                    prompt_tokens=response.usage.prompt_tokens,
+                    completion_tokens=response.usage.completion_tokens,
+                    total_tokens=response.usage.total_tokens,
+                )
+                if response.usage
+                else None
+            )
             logger.debug(
                 "OpenRouter responded (finish_reason={}, answer_len={})",
                 response.choices[0].finish_reason,
                 len(answer),
             )
-            return answer
+            return LlmGeneration(
+                text=answer,
+                model=response.model,
+                usage=usage,
+            )
         except Exception as exc:
             logger.exception("OpenRouter completion request failed: {}", exc)
             raise
+
+    async def close(self) -> None:
+        await self._client.close()

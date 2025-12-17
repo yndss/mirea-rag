@@ -34,7 +34,12 @@ async def handle_question(message: Message) -> None:
 
     try:
         async with rag_service_context() as rag_service:
-            answer = await rag_service.answer(question)
+            user_id = (
+                message.from_user.id
+                if message.from_user is not None
+                else int(message.chat.id)
+            )
+            answer = await rag_service.answer(question, user_id=user_id)
     except Exception as exc:
         await message.answer(
             "Произошла ошибка при обработке вопроса. Попробуй ещё раз позже."

@@ -13,3 +13,11 @@ class QaPair:
     is_generated: bool
     embedding: Sequence[float]
     created_at: datetime | None = None
+
+
+@dataclass
+class QaPairHit:
+    qa_pair: QaPair
+    rank: int
+    distance: float
+    similarity: float

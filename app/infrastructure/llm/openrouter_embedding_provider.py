@@ -55,6 +55,9 @@ class OpenRouterEmbeddingProvider:
             logger.exception("Embedding request to OpenRouter failed: {}", exc)
             raise
 
+    async def close(self) -> None:
+        await self._client.close()
+
     @staticmethod
     def _l2_normalize(vec: Sequence[float]) -> list[float]:
         norm = math.sqrt(sum(x * x for x in vec))

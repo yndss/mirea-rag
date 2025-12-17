@@ -1,5 +1,5 @@
 from typing import Protocol, Sequence
-from app.domain.models.qa_pair import QaPair
+from app.domain.models.qa_pair import QaPair, QaPairHit
 
 
 class QaPairRepository(Protocol):
@@ -13,5 +13,4 @@ class QaPairRepository(Protocol):
         self,
         query_embedding: Sequence[float],
         k: int,
-        min_similarity: float,
-    ) -> Sequence[QaPair]: ...
+    ) -> Sequence[QaPairHit]: ...
