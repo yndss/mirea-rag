@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.interfaces.qa_pair_repository import QaPairRepository
-from app.domain.models.qa_pair import QaPair
+from app.domain.models.qa_pair import QaPair, QaPairHit
 from app.infrastructure.db.models import QaPairORM
 
 
@@ -73,34 +73,46 @@ class SqlAlchemyQaPairRepository(QaPairRepository):
         self,
         query_embedding: Sequence[float],
         k: int,
-        min_similarity: float = 0.0,
-    ) -> Sequence[QaPair]:
+    ) -> Sequence[QaPairHit]:
         distance_expr = QaPairORM.embedding.cosine_distance(list(query_embedding))
         similarity_expr = 1 - distance_expr
         stmt = (
-            select(QaPairORM, similarity_expr.label("similarity"))
-            .where(similarity_expr >= min_similarity)
+            select(
+                QaPairORM,
+                distance_expr.label("distance"),
+                similarity_expr.label("similarity"),
+            )
             .order_by(similarity_expr.desc())
             .limit(k)
         )
 
         result = await self._session.execute(stmt)
         rows = result.all()
+        hits: list[QaPairHit] = []
+        for rank, row in enumerate(rows):
+            hits.append(
+                QaPairHit(
+                    qa_pair=self._to_domain(row.QaPairORM),
+                    rank=rank,
+                    distance=float(row.distance),
+                    similarity=float(row.similarity),
+                )
+            )
+
         logger.info(
-            "Vector search returned {} items (k={}, min_similarity={}):\n{}",
-            len(rows),
+            "Vector search returned {} items (k={}):\n{}",
+            len(hits),
             k,
-            round(min_similarity, 4),
             "\n".join(
                 [
                     (
-                        f"- id={row.QaPairORM.id}, "
-                        f"similarity={round(row.similarity, 4)}, "
-                        f"question={row.QaPairORM.question}, "
-                        f"answer={row.QaPairORM.answer}"
+                        f"- rank={hit.rank}, id={hit.qa_pair.id}, "
+                        f"similarity={hit.similarity:.4f}, distance={hit.distance:.4f}\n"
+                        f"  question: {hit.qa_pair.question}\n"
+                        f"  answer: {hit.qa_pair.answer}"
                     )
-                    for row in rows
+                    for hit in hits
                 ]
             ),
         )
-        return [self._to_domain(row.QaPairORM) for row in rows]
+        return hits

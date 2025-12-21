@@ -4,7 +4,7 @@ from aiogram.types import Message
 from loguru import logger
 
 from app.infrastructure.config import TELEGRAM_WELCOME_PROMPT
-from app.prompts import load_prompt
+from app.prompts.loader import load_prompt
 from .services import rag_service_context
 
 
@@ -34,7 +34,12 @@ async def handle_question(message: Message) -> None:
 
     try:
         async with rag_service_context() as rag_service:
-            answer = await rag_service.answer(question)
+            user_id = (
+                message.from_user.id
+                if message.from_user is not None
+                else int(message.chat.id)
+            )
+            answer = await rag_service.answer(question, user_id=user_id)
     except Exception as exc:
         await message.answer(
             "Произошла ошибка при обработке вопроса. Попробуй ещё раз позже."

@@ -1,6 +1,7 @@
 import asyncio
 import csv
 from pathlib import Path
+from typing import Optional
 
 from loguru import logger
 
@@ -13,7 +14,7 @@ from app.infrastructure.llm.openrouter_embedding_provider import (
 from app.infrastructure.logging import setup_logging
 
 
-def parse_bool(value: str | None, default: bool = True) -> bool:
+def parse_bool(value: Optional[str], default: bool = True) -> bool:
     if value is None:
         return default
     v = value.strip().lower()

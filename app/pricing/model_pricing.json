@@ -1,0 +1,5 @@
+{
+  "qwen/qwen3-8b": { "in_per_1m": 0.028, "out_per_1m": 0.1104 },
+  "qwen/qwen2.5-vl-72b-instruct": { "in_per_1m": 0.03, "out_per_1m": 0.13 },
+  "openai/gpt-oss-20b": { "in_per_1m": 0.03, "out_per_1m": 0.14 }
+}
