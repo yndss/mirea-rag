@@ -1,3 +1,5 @@
+from typing import Optional
+
 from loguru import logger
 from openai import AsyncOpenAI
 
@@ -10,7 +12,7 @@ from app.infrastructure.config import (
     OPENROUTER_TIMEOUT,
     SYSTEM_PROMPT_NAME,
 )
-from app.prompts import load_prompt
+from app.prompts.loader import load_prompt
 
 
 class OpenRouterLlmClient:
@@ -18,11 +20,11 @@ class OpenRouterLlmClient:
     def __init__(
         self,
         *,
-        model_name: str | None = None,
-        temperature: float | None = None,
+        model_name: Optional[str] = None,
+        temperature: Optional[float] = None,
         system_prompt_name: str = SYSTEM_PROMPT_NAME,
         base_url: str = OPENROUTER_BASE_URL,
-        api_key: str | None = OPENROUTER_API_KEY,
+        api_key: Optional[str] = OPENROUTER_API_KEY,
         timeout: float = OPENROUTER_TIMEOUT,
     ) -> None:
         if not api_key:

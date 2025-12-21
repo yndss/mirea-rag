@@ -1,15 +1,16 @@
 from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass(frozen=True)
 class LlmUsage:
-    prompt_tokens: int | None
-    completion_tokens: int | None
-    total_tokens: int | None
+    prompt_tokens: Optional[int]
+    completion_tokens: Optional[int]
+    total_tokens: Optional[int]
 
 
 @dataclass(frozen=True)
 class LlmGeneration:
     text: str
-    model: str | None
-    usage: LlmUsage | None
+    model: Optional[str]
+    usage: Optional[LlmUsage]

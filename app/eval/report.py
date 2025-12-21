@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable, Sequence
+from typing import Iterable, Optional, Sequence
 from uuid import UUID
 
 from app.domain.models.eval import EvalResult
@@ -10,10 +10,10 @@ from app.domain.models.eval import EvalResult
 @dataclass(frozen=True)
 class Distribution:
     count: int
-    mean: float | None
-    p10: float | None
-    p50: float | None
-    p90: float | None
+    mean: Optional[float]
+    p10: Optional[float]
+    p50: Optional[float]
+    p90: Optional[float]
 
 
 @dataclass(frozen=True)
@@ -21,17 +21,16 @@ class EvalSummary:
     eval_run_id: UUID
     cases_total: int
     cases_scored: int
-    success_rate_ge_4: float | None
+    success_rate_ge_4: Optional[float]
     judge: Distribution
-    bert_score_mean: float | None
-    precision_mean: float | None
-    recall_mean: float | None
-    f1_mean: float | None
-    rouge_1_mean: float | None
-    rouge_l_mean: float | None
-    latency_ms_mean: float | None
-    cost_usd_mean: float | None
-    tokens_total_mean: float | None
+    bert_score_mean: Optional[float]
+    rouge_1_mean: Optional[float]
+    rouge_l_mean: Optional[float]
+    latency_ms_mean: Optional[float]
+    cost_usd_mean: Optional[float]
+    tokens_total_mean: Optional[float]
+    judge_cost_usd_mean: Optional[float]
+    judge_tokens_total_mean: Optional[float]
 
 
 def summarize_run(eval_run_id: UUID, results: Sequence[EvalResult]) -> EvalSummary:
@@ -51,14 +50,13 @@ def summarize_run(eval_run_id: UUID, results: Sequence[EvalResult]) -> EvalSumma
         success_rate_ge_4=success_rate_ge_4,
         judge=judge_dist,
         bert_score_mean=_mean(r.bert_score for r in results),
-        precision_mean=_mean(r.precision for r in results),
-        recall_mean=_mean(r.recall for r in results),
-        f1_mean=_mean(r.f1 for r in results),
         rouge_1_mean=_mean(r.rouge_1 for r in results),
         rouge_l_mean=_mean(r.rouge_l for r in results),
         latency_ms_mean=_mean(r.latency_ms for r in results),
         cost_usd_mean=_mean(r.cost_usd for r in results),
         tokens_total_mean=_mean(r.tokens_total for r in results),
+        judge_cost_usd_mean=_mean(r.judge_cost_usd for r in results),
+        judge_tokens_total_mean=_mean(r.judge_tokens_total for r in results),
     )
 
 
@@ -80,19 +78,18 @@ def format_summary(summary: EvalSummary) -> str:
         )
 
     lines.append(f"bert_score_mean={_fmt(summary.bert_score_mean)}")
-    lines.append(f"precision_mean={_fmt(summary.precision_mean)}")
-    lines.append(f"recall_mean={_fmt(summary.recall_mean)}")
-    lines.append(f"f1_mean={_fmt(summary.f1_mean)}")
     lines.append(f"rouge_1_mean={_fmt(summary.rouge_1_mean)}")
     lines.append(f"rouge_l_mean={_fmt(summary.rouge_l_mean)}")
     lines.append(f"latency_ms_mean={_fmt(summary.latency_ms_mean)}")
     lines.append(f"cost_usd_mean={_fmt(summary.cost_usd_mean)}")
     lines.append(f"tokens_total_mean={_fmt(summary.tokens_total_mean)}")
+    lines.append(f"judge_cost_usd_mean={_fmt(summary.judge_cost_usd_mean)}")
+    lines.append(f"judge_tokens_total_mean={_fmt(summary.judge_tokens_total_mean)}")
 
     return "\n".join(lines)
 
 
-def _mean(values: Iterable[float | int | None]) -> float | None:
+def _mean(values: Iterable[Optional[float | int]]) -> Optional[float]:
     nums = [float(v) for v in values if v is not None]
     if not nums:
         return None
@@ -113,7 +110,7 @@ def _distribution(values: Sequence[float]) -> Distribution:
     )
 
 
-def _percentile(sorted_values: Sequence[float], p: float) -> float | None:
+def _percentile(sorted_values: Sequence[float], p: float) -> Optional[float]:
     if not sorted_values:
         return None
     if p <= 0:
@@ -132,7 +129,7 @@ def _percentile(sorted_values: Sequence[float], p: float) -> float | None:
     return float(d0 + d1)
 
 
-def _fmt(value: float | None) -> str:
+def _fmt(value: Optional[float]) -> str:
     if value is None:
         return "null"
     if abs(value) >= 100:

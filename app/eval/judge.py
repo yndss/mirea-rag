@@ -2,18 +2,19 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from typing import Optional
 
 from loguru import logger
 
 from app.domain.models.llm_generation import LlmGeneration
 from app.infrastructure.llm.openrouter_llm_client import OpenRouterLlmClient
-from app.prompts import load_prompt
+from app.prompts.loader import load_prompt
 
 
 @dataclass(frozen=True)
 class JudgeResult:
-    score: int | None
-    reason: str | None
+    score: Optional[int]
+    reason: Optional[str]
     generation: LlmGeneration
     raw_text: str
 
@@ -55,7 +56,7 @@ class LlmJudge:
         )
 
 
-def _parse_judge_json(text: str) -> tuple[int | None, str | None]:
+def _parse_judge_json(text: str) -> tuple[Optional[int], Optional[str]]:
     obj_text = _extract_first_json_object(text)
     if obj_text is None:
         return None, None
@@ -81,7 +82,7 @@ def _parse_judge_json(text: str) -> tuple[int | None, str | None]:
     return score, reason
 
 
-def _extract_first_json_object(text: str) -> str | None:
+def _extract_first_json_object(text: str) -> Optional[str]:
     start = text.find("{")
     if start == -1:
         return None

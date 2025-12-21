@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Sequence
+from typing import Optional, Sequence
 from uuid import UUID
 
 from loguru import logger
@@ -58,24 +58,27 @@ class SqlAlchemyEvalRepository:
             case_id=row.case_id,
             model_answer_text=row.model_answer_text,
             bert_score=row.bert_score,
-            precision=row.precision,
-            recall=row.recall,
-            f1=row.f1,
             rouge_1=row.rouge_1,
             rouge_l=row.rouge_l,
             llm_judge_score=row.llm_judge_score,
             latency_ms=row.latency_ms,
             cost_usd=float(row.cost_usd) if row.cost_usd is not None else None,
             tokens_total=row.tokens_total,
+            judge_cost_usd=(
+                float(row.judge_cost_usd) if row.judge_cost_usd is not None else None
+            ),
+            judge_tokens_total=row.judge_tokens_total,
         )
 
-    async def get_dataset_by_name(self, name: str) -> EvalDataset | None:
+    async def get_dataset_by_name(self, name: str) -> Optional[EvalDataset]:
         row = await self._session.scalar(
             select(EvalDatasetORM).where(EvalDatasetORM.name == name)
         )
         return self._to_dataset(row) if row is not None else None
 
-    async def create_dataset(self, name: str, description: str | None) -> EvalDataset:
+    async def create_dataset(
+        self, name: str, description: Optional[str]
+    ) -> EvalDataset:
         obj = EvalDatasetORM(name=name, description=description)
         self._session.add(obj)
         await self._session.flush()
@@ -84,7 +87,7 @@ class SqlAlchemyEvalRepository:
         return self._to_dataset(obj)
 
     async def get_or_create_dataset(
-        self, name: str, description: str | None
+        self, name: str, description: Optional[str]
     ) -> EvalDataset:
         dataset = await self.get_dataset_by_name(name)
         if dataset is not None:
@@ -138,13 +141,13 @@ class SqlAlchemyEvalRepository:
         logger.info("Created eval run (id={}, dataset_id={})", obj.id, obj.dataset_id)
         return obj.id
 
-    async def get_run(self, run_id: UUID) -> EvalRun | None:
+    async def get_run(self, run_id: UUID) -> Optional[EvalRun]:
         row = await self._session.scalar(
             select(EvalRunORM).where(EvalRunORM.id == run_id)
         )
         return self._to_run(row) if row is not None else None
 
-    async def get_latest_run_id(self, dataset_id: int) -> UUID | None:
+    async def get_latest_run_id(self, dataset_id: int) -> Optional[UUID]:
         return await self._session.scalar(
             select(EvalRunORM.id)
             .where(EvalRunORM.dataset_id == dataset_id)
@@ -163,15 +166,14 @@ class SqlAlchemyEvalRepository:
                 case_id=result.case_id,
                 model_answer_text=result.model_answer_text,
                 bert_score=result.bert_score,
-                precision=result.precision,
-                recall=result.recall,
-                f1=result.f1,
                 rouge_1=result.rouge_1,
                 rouge_l=result.rouge_l,
                 llm_judge_score=result.llm_judge_score,
                 latency_ms=result.latency_ms,
                 cost_usd=result.cost_usd,
                 tokens_total=result.tokens_total,
+                judge_cost_usd=result.judge_cost_usd,
+                judge_tokens_total=result.judge_tokens_total,
             )
             self._session.add(obj)
             await self._session.flush()
@@ -179,15 +181,14 @@ class SqlAlchemyEvalRepository:
 
         obj.model_answer_text = result.model_answer_text
         obj.bert_score = result.bert_score
-        obj.precision = result.precision
-        obj.recall = result.recall
-        obj.f1 = result.f1
         obj.rouge_1 = result.rouge_1
         obj.rouge_l = result.rouge_l
         obj.llm_judge_score = result.llm_judge_score
         obj.latency_ms = result.latency_ms
         obj.cost_usd = result.cost_usd
         obj.tokens_total = result.tokens_total
+        obj.judge_cost_usd = result.judge_cost_usd
+        obj.judge_tokens_total = result.judge_tokens_total
         await self._session.flush()
 
     async def list_results(self, run_id: UUID) -> Sequence[EvalResult]:

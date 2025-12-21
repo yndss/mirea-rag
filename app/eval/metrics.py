@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from collections import Counter
 from dataclasses import dataclass
-from typing import Sequence
+from typing import Optional, Sequence
 
 
 _WORD_RE = re.compile(r"\w+", flags=re.UNICODE)
@@ -14,40 +14,10 @@ def _tokenize(text: str) -> list[str]:
 
 
 @dataclass(frozen=True)
-class OverlapMetrics:
-    precision: float
-    recall: float
-    f1: float
-
-
-@dataclass(frozen=True)
 class EvalMetrics:
-    bert_score: float | None
-    precision: float
-    recall: float
-    f1: float
+    bert_score: Optional[float]
     rouge_1: float
     rouge_l: float
-
-
-def token_set_prf1(reference: str, prediction: str) -> OverlapMetrics:
-    ref = set(_tokenize(reference))
-    pred = set(_tokenize(prediction))
-
-    if not ref and not pred:
-        return OverlapMetrics(precision=1.0, recall=1.0, f1=1.0)
-    if not pred:
-        return OverlapMetrics(precision=0.0, recall=0.0, f1=0.0)
-    if not ref:
-        return OverlapMetrics(precision=0.0, recall=0.0, f1=0.0)
-
-    overlap = len(ref & pred)
-    precision = overlap / len(pred) if pred else 0.0
-    recall = overlap / len(ref) if ref else 0.0
-    f1 = (
-        (2 * precision * recall / (precision + recall)) if (precision + recall) else 0.0
-    )
-    return OverlapMetrics(precision=precision, recall=recall, f1=f1)
 
 
 def rouge_1_f1(reference: str, prediction: str) -> float:

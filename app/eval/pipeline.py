@@ -5,7 +5,7 @@ import csv
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
+from typing import Optional, Sequence
 from uuid import UUID
 
 from loguru import logger
@@ -13,7 +13,8 @@ from loguru import logger
 from app.application.rag_service import RagAnswerDetails, RagService
 from app.domain.models.eval import EvalCase, EvalResult, EvalRun
 from app.eval.judge import LlmJudge
-from app.eval.metrics import rouge_1_f1, rouge_l_f1, token_set_prf1
+from app.eval.metrics import rouge_1_f1, rouge_l_f1
+from app.pricing.pricing import estimate_llm_cost_usd
 from app.infrastructure.config import (
     EMBEDDING_BASE_URL,
     EMBEDDING_TIMEOUT,
@@ -35,13 +36,11 @@ from app.infrastructure.llm.openrouter_embedding_provider import (
 )
 from app.infrastructure.llm.openrouter_llm_client import OpenRouterLlmClient
 
-# from app.pricing import estimate_llm_cost_usd
-
 
 @dataclass(frozen=True)
 class EvalPipelineConfig:
     dataset_name: str
-    dataset_description: str | None
+    dataset_description: Optional[str]
     system_version: str
 
     rag_top_k: int = RAG_TOP_K
@@ -61,12 +60,12 @@ class EvalPipelineConfig:
     judge_base_url: str = OPENROUTER_BASE_URL
     judge_timeout: float = OPENROUTER_TIMEOUT
 
-    metrics_embedding_model_name: str | None = None
+    metrics_embedding_model_name: Optional[str] = None
     metrics_embedding_base_url: str = EMBEDDING_BASE_URL
     metrics_embedding_timeout: float = EMBEDDING_TIMEOUT
 
     concurrency: int = 3
-    limit_cases: int | None = None
+    limit_cases: Optional[int] = None
 
 
 class EvalPipeline:
@@ -78,7 +77,7 @@ class EvalPipeline:
         self,
         *,
         dataset_name: str,
-        description: str | None,
+        description: Optional[str],
         csv_path: str,
         replace_cases: bool = True,
     ) -> int:
@@ -209,7 +208,7 @@ class EvalPipeline:
         return run_id
 
     async def _load_cases_for_run(
-        self, *, dataset_name: str, limit_cases: int | None
+        self, *, dataset_name: str, limit_cases: Optional[int]
     ) -> tuple[int, Sequence[EvalCase]]:
         async with self._session_factory() as session:
             repo = SqlAlchemyEvalRepository(session)
@@ -245,10 +244,10 @@ class EvalPipeline:
         answer_embedder: OpenRouterEmbeddingProvider,
         answer_llm: OpenRouterLlmClient,
         judge: LlmJudge,
-        metrics_embedder: OpenRouterEmbeddingProvider | None,
+        metrics_embedder: Optional[OpenRouterEmbeddingProvider],
     ) -> None:
         async with sem:
-            answer_details: RagAnswerDetails | None = None
+            answer_details: Optional[RagAnswerDetails] = None
             answer_text: str = ""
 
             try:
@@ -268,24 +267,21 @@ class EvalPipeline:
                         case_id=case.case_id,
                         model_answer_text=f"ERROR: {exc}",
                         bert_score=None,
-                        precision=None,
-                        recall=None,
-                        f1=None,
                         rouge_1=None,
                         rouge_l=None,
                         llm_judge_score=None,
                         latency_ms=None,
                         cost_usd=None,
                         tokens_total=None,
+                        judge_cost_usd=None,
+                        judge_tokens_total=None,
                     )
                 )
                 return
-
-            overlap = token_set_prf1(case.ideal_answer_text, answer_text)
             rouge_1 = rouge_1_f1(case.ideal_answer_text, answer_text)
             rouge_l = rouge_l_f1(case.ideal_answer_text, answer_text)
 
-            bert_score: float | None = None
+            bert_score: Optional[float] = None
             if metrics_embedder is not None:
                 try:
                     bert_score = await _embedding_similarity(
@@ -298,9 +294,9 @@ class EvalPipeline:
                         exc,
                     )
 
-            judge_score: int | None = None
-            # judge_cost_usd: float | None = None
-            # judge_tokens_total: int | None = None
+            judge_score: Optional[int] = None
+            judge_cost_usd: Optional[float] = None
+            judge_tokens_total: Optional[int] = None
 
             try:
                 judged = await judge.judge(
@@ -309,29 +305,29 @@ class EvalPipeline:
                     model_answer=answer_text,
                 )
                 judge_score = judged.score
-                # judge_tokens_total = (
-                #     judged.generation.usage.total_tokens
-                #     if judged.generation.usage
-                #     else None
-                # )
-                # judge_cost_usd = estimate_llm_cost_usd(
-                #     model_name=judged.generation.model or config.judge_model_name,
-                #     prompt_tokens=(
-                #         judged.generation.usage.prompt_tokens
-                #         if judged.generation.usage
-                #         else None
-                #     ),
-                #     completion_tokens=(
-                #         judged.generation.usage.completion_tokens
-                #         if judged.generation.usage
-                #         else None
-                #     ),
-                # )
+                judge_tokens_total = (
+                    judged.generation.usage.total_tokens
+                    if judged.generation.usage
+                    else None
+                )
+                judge_cost_usd = estimate_llm_cost_usd(
+                    model_name=judged.generation.model or config.judge_model_name,
+                    prompt_tokens=(
+                        judged.generation.usage.prompt_tokens
+                        if judged.generation.usage
+                        else None
+                    ),
+                    completion_tokens=(
+                        judged.generation.usage.completion_tokens
+                        if judged.generation.usage
+                        else None
+                    ),
+                )
             except Exception as exc:
                 logger.exception("Judge failed (case_id={}): {}", case.case_id, exc)
 
-            total_cost_usd = answer_details.cost_usd
-            tokens_total = answer_details.usage_total_tokens
+            answer_cost_usd = answer_details.cost_usd
+            answer_tokens_total = answer_details.usage_total_tokens
 
             latency_ms = answer_details.latency_ms_total
 
@@ -341,15 +337,14 @@ class EvalPipeline:
                     case_id=case.case_id,
                     model_answer_text=answer_text,
                     bert_score=bert_score,
-                    precision=overlap.precision,
-                    recall=overlap.recall,
-                    f1=overlap.f1,
                     rouge_1=rouge_1,
                     rouge_l=rouge_l,
                     llm_judge_score=judge_score,
                     latency_ms=latency_ms,
-                    cost_usd=total_cost_usd,
-                    tokens_total=tokens_total,
+                    cost_usd=answer_cost_usd,
+                    tokens_total=answer_tokens_total,
+                    judge_cost_usd=judge_cost_usd,
+                    judge_tokens_total=judge_tokens_total,
                 )
             )
 

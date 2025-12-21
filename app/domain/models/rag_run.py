@@ -1,14 +1,14 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 from uuid import UUID
 
 
 @dataclass
 class RagRun:
-    id: UUID | None
-    created_at: datetime | None
-    user_id: int | None
+    id: Optional[UUID]
+    created_at: Optional[datetime]
+    user_id: Optional[int]
     question_text: str
     retriever_top_k: int
     similarity_threshold: float
@@ -17,23 +17,23 @@ class RagRun:
     final_prompt_text: str
     model_name: str
     temperature: float
-    extra_params: dict[str, Any] | None
+    extra_params: Optional[dict[str, Any]]
     answer_text: str
-    usage_prompt_tokens: int | None
-    usage_completion_tokens: int | None
-    usage_total_tokens: int | None
-    cost_usd: float | None
-    latency_ms_total: int | None
-    latency_ms_retrieval: int | None
-    latency_ms_llm: int | None
-    latency_ms_embedding: int | None
+    usage_prompt_tokens: Optional[int]
+    usage_completion_tokens: Optional[int]
+    usage_total_tokens: Optional[int]
+    cost_usd: Optional[float]
+    latency_ms_total: Optional[int]
+    latency_ms_retrieval: Optional[int]
+    latency_ms_llm: Optional[int]
+    latency_ms_embedding: Optional[int]
 
 
 @dataclass
 class RagRunHit:
-    rag_run_id: UUID | None
+    rag_run_id: Optional[UUID]
     rank: int
-    qa_pair_id: int | None
+    qa_pair_id: Optional[int]
     distance: float
     similarity: float
     used_in_context: bool

@@ -1,5 +1,6 @@
 import asyncio
 import os
+from typing import Optional
 from uuid import UUID
 
 from app.eval.report import format_summary, summarize_run
@@ -20,7 +21,7 @@ async def main() -> None:
     )
     args = parser.parse_args()
 
-    run_id: UUID | None = UUID(args.run_id) if args.run_id else None
+    run_id: Optional[UUID] = UUID(args.run_id) if args.run_id else None
 
     async with SessionLocal() as session:
         repo = SqlAlchemyEvalRepository(session)

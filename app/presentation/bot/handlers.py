@@ -4,7 +4,7 @@ from aiogram.types import Message
 from loguru import logger
 
 from app.infrastructure.config import TELEGRAM_WELCOME_PROMPT
-from app.prompts import load_prompt
+from app.prompts.loader import load_prompt
 from .services import rag_service_context
 
 

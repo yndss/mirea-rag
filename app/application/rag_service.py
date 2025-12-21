@@ -1,6 +1,6 @@
 import time
 from dataclasses import dataclass
-from typing import Sequence
+from typing import Optional, Sequence
 
 from app.domain.interfaces.qa_pair_repository import QaPairRepository
 from app.domain.interfaces.embedding_provider import EmbeddingProvider
@@ -17,8 +17,8 @@ from app.infrastructure.config import (
     RAG_TOP_K,
     SYSTEM_PROMPT_NAME,
 )
-from app.prompts import load_prompt
-from app.pricing import estimate_llm_cost_usd
+from app.prompts.loader import load_prompt
+from app.pricing.pricing import estimate_llm_cost_usd
 from loguru import logger
 
 
@@ -26,10 +26,10 @@ from loguru import logger
 class RagAnswerDetails:
     answer_text: str
     model_name: str
-    usage_prompt_tokens: int | None
-    usage_completion_tokens: int | None
-    usage_total_tokens: int | None
-    cost_usd: float | None
+    usage_prompt_tokens: Optional[int]
+    usage_completion_tokens: Optional[int]
+    usage_total_tokens: Optional[int]
+    cost_usd: Optional[float]
     latency_ms_total: int
     latency_ms_retrieval: int
     latency_ms_llm: int
@@ -43,7 +43,7 @@ class RagService:
         qa_repo: QaPairRepository,
         embedding_provider: EmbeddingProvider,
         llm_client: LlmClient,
-        run_repo: RagRunRepository | None = None,
+        run_repo: Optional[RagRunRepository] = None,
         top_k: int = RAG_TOP_K,
         qa_prompt_name: str = RAG_QA_PROMPT_NAME,
         min_similarity: float = RAG_MIN_SIMILARITY,
@@ -70,12 +70,12 @@ class RagService:
             "{{user_question}}", question
         )
 
-    async def answer(self, question: str, user_id: int | None = None) -> str:
+    async def answer(self, question: str, user_id: Optional[int] = None) -> str:
         details = await self.answer_detailed(question, user_id=user_id)
         return details.answer_text
 
     async def answer_detailed(
-        self, question: str, user_id: int | None = None
+        self, question: str, user_id: Optional[int] = None
     ) -> RagAnswerDetails:
         t_total_start = time.perf_counter()
         logger.info(

@@ -1,5 +1,5 @@
-from typing import Sequence
 import math
+from typing import Optional, Sequence
 
 from loguru import logger
 from openai import AsyncOpenAI
@@ -17,9 +17,9 @@ class OpenRouterEmbeddingProvider:
     def __init__(
         self,
         *,
-        model_name: str | None = None,
+        model_name: Optional[str] = None,
         base_url: str = EMBEDDING_BASE_URL,
-        api_key: str | None = OPENROUTER_API_KEY,
+        api_key: Optional[str] = OPENROUTER_API_KEY,
         timeout: float = EMBEDDING_TIMEOUT,
     ) -> None:
         if not api_key:

@@ -1,6 +1,6 @@
 import asyncio
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
+from typing import AsyncIterator, Optional
 
 from loguru import logger
 
@@ -16,8 +16,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 
 _shared_clients_lock = asyncio.Lock()
-_shared_embedding_provider: OpenRouterEmbeddingProvider | None = None
-_shared_llm_client: OpenRouterLlmClient | None = None
+_shared_embedding_provider: Optional[OpenRouterEmbeddingProvider] = None
+_shared_llm_client: Optional[OpenRouterLlmClient] = None
 
 
 async def _get_shared_clients() -> (
