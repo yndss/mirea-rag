@@ -39,9 +39,11 @@ async def seed_from_csv(csv_path: str) -> None:
                 reader = csv.DictReader(f)
                 rows = list(reader)
 
-            questions = [row["question"] for row in rows]
+            questions = [f'{row["question"]}\n{row["answer"]}' for row in rows]
             logger.info(
-                "Embedding questions from CSV (count={}, path={})", len(questions), path
+                "Embedding questions+answers from CSV (count={}, path={})",
+                len(questions),
+                path,
             )
             embeddings = await embedder.embed_many(questions)
 
