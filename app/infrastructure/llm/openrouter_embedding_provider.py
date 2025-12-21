@@ -14,17 +14,26 @@ from app.infrastructure.config import (
 
 class OpenRouterEmbeddingProvider:
 
-    def __init__(self) -> None:
-        if not OPENROUTER_API_KEY:
+    def __init__(
+        self,
+        *,
+        model_name: str | None = None,
+        base_url: str = EMBEDDING_BASE_URL,
+        api_key: str | None = OPENROUTER_API_KEY,
+        timeout: float = EMBEDDING_TIMEOUT,
+    ) -> None:
+        if not api_key:
             raise RuntimeError("OPENROUTER_API_KEY is not set")
-        if not EMBEDDING_MODEL_NAME:
+
+        resolved_model_name = model_name or EMBEDDING_MODEL_NAME
+        if not resolved_model_name:
             raise RuntimeError("EMBEDDING_MODEL_NAME is not set")
 
-        self._model = EMBEDDING_MODEL_NAME
+        self._model = resolved_model_name
         self._client = AsyncOpenAI(
-            base_url=EMBEDDING_BASE_URL,
-            api_key=OPENROUTER_API_KEY,
-            timeout=EMBEDDING_TIMEOUT,
+            base_url=base_url,
+            api_key=api_key,
+            timeout=timeout,
         )
 
     async def embed(self, text: str) -> Sequence[float]:

@@ -89,3 +89,71 @@ class RagRunHitORM(Base):
     used_in_context: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
     )
+
+
+class EvalDatasetORM(Base):
+    __tablename__ = "eval_datasets"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class EvalCaseORM(Base):
+    __tablename__ = "eval_cases"
+
+    dataset_id: Mapped[int] = mapped_column(
+        ForeignKey("eval_datasets.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    case_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    question_text: Mapped[str] = mapped_column(Text, nullable=False)
+    ideal_answer_text: Mapped[str] = mapped_column(Text, nullable=False)
+    meta_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
+
+class EvalRunORM(Base):
+    __tablename__ = "eval_runs"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        PG_UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    dataset_id: Mapped[int] = mapped_column(
+        ForeignKey("eval_datasets.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    system_version: Mapped[str] = mapped_column(Text, nullable=False)
+    retriever_config_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    llm_config_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
+
+class EvalResultORM(Base):
+    __tablename__ = "eval_results"
+
+    eval_run_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("eval_runs.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    case_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+    model_answer_text: Mapped[str] = mapped_column(Text, nullable=False)
+
+    bert_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    precision: Mapped[float | None] = mapped_column(Float, nullable=True)
+    recall: Mapped[float | None] = mapped_column(Float, nullable=True)
+    f1: Mapped[float | None] = mapped_column(Float, nullable=True)
+    rouge_1: Mapped[float | None] = mapped_column(Float, nullable=True)
+    rouge_l: Mapped[float | None] = mapped_column(Float, nullable=True)
+    llm_judge_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    latency_ms: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    cost_usd: Mapped[float | None] = mapped_column(Numeric(20, 10), nullable=True)
+    tokens_total: Mapped[int | None] = mapped_column(BigInteger, nullable=True)

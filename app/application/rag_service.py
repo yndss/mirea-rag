@@ -1,4 +1,5 @@
 import time
+from dataclasses import dataclass
 from typing import Sequence
 
 from app.domain.interfaces.qa_pair_repository import QaPairRepository
@@ -19,6 +20,20 @@ from app.infrastructure.config import (
 from app.prompts import load_prompt
 from app.pricing import estimate_llm_cost_usd
 from loguru import logger
+
+
+@dataclass(frozen=True)
+class RagAnswerDetails:
+    answer_text: str
+    model_name: str
+    usage_prompt_tokens: int | None
+    usage_completion_tokens: int | None
+    usage_total_tokens: int | None
+    cost_usd: float | None
+    latency_ms_total: int
+    latency_ms_retrieval: int
+    latency_ms_llm: int
+    latency_ms_embedding: int
 
 
 class RagService:
@@ -56,6 +71,12 @@ class RagService:
         )
 
     async def answer(self, question: str, user_id: int | None = None) -> str:
+        details = await self.answer_detailed(question, user_id=user_id)
+        return details.answer_text
+
+    async def answer_detailed(
+        self, question: str, user_id: int | None = None
+    ) -> RagAnswerDetails:
         t_total_start = time.perf_counter()
         logger.info(
             "RAG pipeline started (question_len={}, top_k={}, min_similarity={}, question={})",
@@ -111,6 +132,10 @@ class RagService:
         logger.info("RAG full answer:\n{}", answer)
 
         t_total_end = time.perf_counter()
+        latency_ms_total = int((t_total_end - t_total_start) * 1000)
+        latency_ms_retrieval = int((t_retrieval_end - t_retrieval_start) * 1000)
+        latency_ms_llm = int((t_llm_end - t_llm_start) * 1000)
+        latency_ms_embedding = int((t_embed_end - t_embed_start) * 1000)
 
         if self._run_repo is not None:
             run = RagRun(
@@ -141,10 +166,10 @@ class RagService:
                     generation.usage.total_tokens if generation.usage else None
                 ),
                 cost_usd=cost_usd,
-                latency_ms_total=int((t_total_end - t_total_start) * 1000),
-                latency_ms_retrieval=int((t_retrieval_end - t_retrieval_start) * 1000),
-                latency_ms_llm=int((t_llm_end - t_llm_start) * 1000),
-                latency_ms_embedding=int((t_embed_end - t_embed_start) * 1000),
+                latency_ms_total=latency_ms_total,
+                latency_ms_retrieval=latency_ms_retrieval,
+                latency_ms_llm=latency_ms_llm,
+                latency_ms_embedding=latency_ms_embedding,
             )
 
             run_hits: list[RagRunHit] = [
@@ -186,4 +211,21 @@ class RagService:
             len(context_qas),
             len(answer),
         )
-        return answer
+        return RagAnswerDetails(
+            answer_text=answer,
+            model_name=model_name,
+            usage_prompt_tokens=(
+                generation.usage.prompt_tokens if generation.usage else None
+            ),
+            usage_completion_tokens=(
+                generation.usage.completion_tokens if generation.usage else None
+            ),
+            usage_total_tokens=(
+                generation.usage.total_tokens if generation.usage else None
+            ),
+            cost_usd=cost_usd,
+            latency_ms_total=latency_ms_total,
+            latency_ms_retrieval=latency_ms_retrieval,
+            latency_ms_llm=latency_ms_llm,
+            latency_ms_embedding=latency_ms_embedding,
+        )
